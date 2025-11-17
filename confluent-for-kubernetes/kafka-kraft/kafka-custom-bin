@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-custom-bin
+  namespace: kafka
+data:
+  launch: |
+    #!/bin/bash
+    echo ">>> Custom launch invoked"
+    # Force correct Kafka PATH
+    export PATH="/opt/kafka/bin:$PATH"
+    exec /opt/kafka/bin/kafka-run-class "$@"
+
+  run: |
+    #!/bin/bash
+    echo ">>> Custom run invoked"
+    export PATH="/opt/kafka/bin:$PATH"
+    exec /opt/kafka/bin/kafka-server-start.sh "$@"
+

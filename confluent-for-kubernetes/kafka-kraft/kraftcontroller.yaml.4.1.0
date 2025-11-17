@@ -1,0 +1,45 @@
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraft-controller
+  namespace: confluent-operator
+
+spec:
+  replicas: 3
+
+  dataVolumeCapacity: 20Gi
+
+  image:
+    application: quay.io/tonyfieit75/kafka-kraft:s390x-4.1.0-cfk-fixed
+    init: quay.io/tonyfieit75/confluent-init-container:v0.1351.35-s390x
+
+  storage:
+    type: persistent
+    class: managed-nfs-storage
+    size: 20Gi
+
+  podTemplate:
+    podSecurityContext:
+      runAsNonRoot: true
+
+    containerSecurityContext:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+
+    initContainerSecurityContext:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+
+  configOverrides:
+    server:
+      - process.roles=controller
+      - controller.listener.names=CONTROLLER
+      - listeners=CONTROLLER://:9093
+      - listener.security.protocol.map=CONTROLLER:PLAINTEXT
+      - controller.quorum.voters=9990@kraft-controller-0:9093,9991@kraft-controller-1:9093,9992@kraft-controller-2:9093
+      - log.dirs=/var/lib/kafka/data
+

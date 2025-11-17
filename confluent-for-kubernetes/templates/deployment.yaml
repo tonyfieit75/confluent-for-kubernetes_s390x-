@@ -1,0 +1,132 @@
+{{- $_ := required "Namespace is required" .Release.Namespace }}
+{{- $_ := required "Name of operator is required." .Values.name }}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "confluent-operator.name" . }}
+    app.kubernetes.io/name: {{ include "confluent-operator.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/component: confluent-operator
+    helm.sh/chart: {{ include "confluent-operator.chart" . }}
+    version: {{ .Values.image.tag }}
+
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "confluent-operator.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+
+  template:
+    metadata:
+      labels:
+        app: {{ include "confluent-operator.name" . }}
+        app.kubernetes.io/name: {{ include "confluent-operator.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        version: {{ .Values.image.tag }}
+        confluent-platform: "true"
+        {{- range $k, $v := .Values.pod.labels }}
+        {{ $k }}: {{ $v | quote }}
+        {{- end }}
+      annotations:
+        {{- range $k, $v := .Values.pod.annotations }}
+        {{ $k }}: {{ $v | quote }}
+        {{- end }}
+
+    spec:
+      serviceAccountName: {{ template "confluent-operator.service-account" . }}
+
+      # OpenShift-compatible security context (NO UID/FSGROUP)
+      securityContext:
+        runAsNonRoot: true
+
+      {{- if not (empty .Values.affinity) }}
+      affinity:
+{{ toYaml .Values.affinity | indent 8 }}
+      {{- end }}
+
+      {{- if not (empty .Values.tolerations) }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+      {{- end }}
+
+      containers:
+        - name: confluent-operator
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          # Allow OpenShift to inject UID automatically
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+
+          args:
+            - "--debug={{ .Values.debug }}"
+            - "--fipsmode={{ .Values.fipsmode }}"
+            - "--kraftClusterIdRecovery={{ .Values.kRaftEnabled }}"
+            {{- if gt (int .Values.replicas) 1 }}
+            - "--enable-leader-election"
+            {{- end }}
+            {{- if .Values.namespaced }}
+              {{- if empty .Values.namespaceList }}
+            - "--namespaces={{ .Release.Namespace }}"
+              {{- else }}
+            - "--namespaces={{ join .Values.namespaceList "," }}"
+              {{- end }}
+            {{- end }}
+
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef: { fieldPath: metadata.namespace }
+
+            - name: NODEIP
+              valueFrom:
+                fieldRef: { fieldPath: status.hostIP }
+
+            - name: DEPLOYMENT_NAME
+              value: {{ .Values.name }}
+
+            - name: CONFLUENT_SERVICE_ACCOUNT_NAME
+              value: {{ template "confluent-operator.service-account" . }}
+
+            {{- range .Values.customEnvVars }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
+
+          ports:
+            - name: metrics
+              containerPort: 7778
+            - name: health
+              containerPort: 8080
+
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+
+      # pull secret
+      {{- if .Values.imagePullSecretRef }}
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecretRef }}
+      {{- end }}
+
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+
+

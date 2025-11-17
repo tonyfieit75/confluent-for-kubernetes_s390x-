@@ -1,0 +1,88 @@
+# --------------------------------------------------------------
+# Confluent Operator – LinuxONE (s390x) Configuration
+# --------------------------------------------------------------
+
+name: confluent-operator
+
+# Your s390x operator image
+image:
+  registry: quay.io/tonyfieit75
+  repository: confluent-operator
+  tag: v0.1351.35-s390x
+  pullPolicy: IfNotPresent
+
+# Image pull secret (if needed)
+imagePullSecretRef: confluent-registry
+
+# Init-container override for s390x
+initContainer:
+  image:
+    registry: quay.io/tonyfieit75
+    repository: confluent-init-container
+    tag: v0.1351.35-s390x
+    pullPolicy: IfNotPresent
+
+# Operator runs perfectly with 1 replica
+replicas: 1
+
+# Watch only the namespace where deployed
+namespaced: true
+
+namespaceList: []  # leave empty to watch only confluent-operator namespace
+
+# Enable RBAC
+rbac: true
+
+# Enable OpenShift extra permissions (required)
+clusterRole:
+  openshift: true
+
+# Pod security context (compliant with OpenShift restricted-v2)
+podSecurity:
+  enabled: true
+  securityContext:
+    runAsNonRoot: true
+
+# Disable container-level override
+containerSecurity:
+  enabled: false
+
+# Disable webhooks (OpenShift TLS not provided)
+webhooks:
+  enabled: false
+
+# Disable managed certificates (you are not using them)
+managedCerts:
+  enabled: false
+
+# Disable telemetry to reduce noise
+telemetry:
+  operator:
+    enabled: false
+  enabled: false
+
+# Disable debug mode
+debug: false
+
+# Ensure operator can update PV annotations (only needed for KRaft — keep disabled for now)
+kRaftEnabled: false
+
+# Extra pod annotations
+pod:
+  annotations:
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "9180"
+    prometheus.io/scrape: "true"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# No license needed for now
+licenseKey: ""
+licenseSecretRef: ""
+

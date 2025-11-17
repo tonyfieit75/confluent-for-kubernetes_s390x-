@@ -1,0 +1,47 @@
+apiVersion: platform.confluent.io/v1beta1
+kind: KRaftController
+metadata:
+  name: kraft-controller
+  namespace: confluent-operator
+spec:
+  replicas: 3
+
+  image:
+    application: quay.io/tonyfieit75/kafka-kraft:s390x-4.1.0-fixed
+    init: quay.io/tonyfieit75/confluent-init-container:v0.1351.35-s390x
+
+  dataVolumeCapacity: 20Gi
+
+  storage:
+    type: persistent
+    class: managed-nfs-storage
+    size: 20Gi
+
+  # >>> CRITICAL — REQUIRED FOR OPENSHIFT <<<
+  podTemplate:
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: null
+      fsGroup: null
+      supplementalGroups: []
+      fsGroupChangePolicy: "OnRootMismatch"
+
+    containerSecurityContext:
+      runAsNonRoot: true
+      runAsUser: null
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+
+    initContainerSecurityContext:
+      runAsNonRoot: true
+      runAsUser: null
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop: ["ALL"]
+
+  configOverrides:
+    server:
+      - process.roles=controller
+      - controller.quorum.voters=0@kraft-controller-0:9093,1@kraft-controller-1:9093,2@kraft-controller-2:9093
+

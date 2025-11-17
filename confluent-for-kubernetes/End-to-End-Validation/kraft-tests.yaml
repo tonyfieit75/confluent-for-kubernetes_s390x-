@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kraft-tests
+  namespace: confluent
+data:
+  01-check-cluster.sh: |
+    #!/bin/bash
+    echo "Checking Kafka brokers..."
+    oc get pods -n confluent -l app=kafka
+  02-create-topics.sh: |
+    #!/bin/bash
+    kafka-topics.sh --bootstrap-server kafka:9092 --create \
+      --topic demo --replication-factor 3 --partitions 3
+  03-produce-consume.sh: |
+    #!/bin/bash
+    echo "Test message" | kafka-console-producer.sh --broker-list kafka:9092 --topic demo
+    kafka-console-consumer.sh --bootstrap-server kafka:9092 --topic demo --from-beginning --timeout-ms 5000
+  04-failover.sh: |
+    #!/bin/bash
+    echo "Simulating broker failover..."
+    oc delete pod -n confluent $(oc get pod -n confluent -l app=kafka | grep Running | head -1 | awk '{print $1}')
+  05-throughput.sh: |
+    #!/bin/bash
+    echo "Running performance test..."
+    kafka-producer-perf-test.sh --topic demo --throughput 10000 --record-size 1000 --num-records 50000 --producer-props bootstrap.servers=kafka:9092
+  06-flink-integration.sh: |
+    #!/bin/bash
+    echo "Running Flink → Kafka integration test"
+    oc apply -f flink-kafka-job.yaml
+  run-all.sh: |
+    #!/bin/bash
+    chmod +x /tests/*.sh
+    for t in /tests/*.sh; do
+      echo "==== Running $t ===="
+      bash "$t"
+      echo "==== Finished $t ===="
+      echo
+    done
+

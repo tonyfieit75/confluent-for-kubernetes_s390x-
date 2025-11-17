@@ -1,0 +1,23 @@
+apiVersion: platform.confluent.io/v1beta1
+kind: Kafka
+metadata:
+  name: kafka
+  namespace: kafka
+spec:
+  replicas: 3
+
+  image:
+    application: quay.io/tonyfieit75/kafka-kraft:s390x-4.1.0-fixed
+
+  storage:
+    type: persistent
+    class: managed-nfs-storage
+    size: 30Gi
+
+  configOverrides:
+    server:
+      - process.roles=broker
+      - node.id=0
+      - controller.quorum.voters=0@kraft-controller-0:9093,1@kraft-controller-1:9093,2@kraft-controller-2:9093
+      - advertised.listeners=PLAINTEXT://kafka-0.kafka.kafka.svc.cluster.local:9092
+

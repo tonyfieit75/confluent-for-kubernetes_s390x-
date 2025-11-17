@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kraft-test-runner
+  namespace: confluent
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: kraft-tests
+        image: quay.io/tonyfieit75/kafka-kraft:s390x-4.1.0-fixed
+        command: ["/bin/bash", "/tests/run-all.sh"]
+        volumeMounts:
+        - name: tests
+          mountPath: /tests
+      volumes:
+      - name: tests
+        configMap:
+          name: kraft-tests
+          defaultMode: 0755
+
