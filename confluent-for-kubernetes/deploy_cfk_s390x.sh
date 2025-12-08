@@ -17,10 +17,11 @@ for crd in ./crds/*.yaml; do
   oc apply -f "$crd"
 done
 
-echo "➡️  Installing CFK operator via Helm..."
+echo "➡️  Installing CFK operator via Helm (with CMF Day-2 Ops enabled)..."
 helm upgrade --install confluent-operator . \
   -n $NS \
-  -f values-s390x.yaml
+  -f values-s390x.yaml \
+  --set enableCMFDay2Ops=true
 
 echo "✅ Deployment complete!"
 echo ""
